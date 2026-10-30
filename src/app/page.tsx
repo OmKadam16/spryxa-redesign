@@ -1,142 +1,157 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { Sheet } from "@/components/ui";
 import { useShell } from "@/components/Shell";
-import { crews, approvals, connectors, firstDecision, recommended, type Crew } from "@/lib/data";
+import { crews, approvals, connectors, recommended, type Crew } from "@/lib/data";
 
 export default function Home() {
   const { openApprovals, openAsk, toast, pending } = useShell();
-  const [tab, setTab] = useState<"review" | "handled">("review");
   const [crew, setCrew] = useState<Crew | null>(null);
-  const [auto, setAuto] = useState(false);
-  const attention = approvals.slice(0, Math.min(pending, 5));
+  const attention = approvals.slice(0, Math.min(pending, 4));
+  const needsSetup = crews.filter((item) => item.state === "needs").length;
+  const setupDone = 0;
+  const progress = Math.max(0, Math.min(100, Math.round((setupDone / connectors.length) * 100)));
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  }, []);
 
   return (
-    <div className="page">
-      <div className="page-head">
+    <div className="page home-dashboard">
+      <header className="home-welcome">
         <div>
-          <h1 className="hd page-title">Welcome, Om</h1>
-          <p className="page-sub">{pending > 0 ? `${pending} items need your attention today.` : "Nothing needs you right now."}</p>
+          <div className="eyebrow"><span className="eyebrow-dot" /> WORKSPACE OVERVIEW</div>
+          <h1 className="hd page-title">{greeting}, Om.</h1>
+          <p className="page-sub">Here’s what’s happening across your growth workspace.</p>
         </div>
-        {pending > 0 && (
-          <div className="actions">
-            <button className="btn btn-lg btn-primary" onClick={openApprovals}>Review {pending} approvals</button>
-          </div>
-        )}
-      </div>
+        <div className="home-head-actions">
+          <button className="btn btn-secondary" onClick={() => openAsk("Give me a concise overview of the workspace and the most important next action.")}>
+            <Icon name="spark" size={16} /> Ask Spryxa
+          </button>
+          <button className="btn btn-primary" onClick={openApprovals}>
+            Review approvals <span className="button-count">{pending}</span>
+          </button>
+        </div>
+      </header>
 
-      <section className="card first" aria-labelledby="first-t">
-        <div className="first-head">
+      <section className="home-metrics" aria-label="Workspace summary">
+        <article className="metric-card">
+          <div className="metric-top"><span>Needs your review</span><span className="metric-icon metric-blue"><Icon name="inbox" size={17} /></span></div>
+          <div className="metric-value">{pending}</div>
+          <div className="metric-foot"><span className={pending ? "status-dot status-amber" : "status-dot"} /> {pending ? "Items waiting for a decision" : "You're all caught up"}</div>
+        </article>
+        <article className="metric-card">
+          <div className="metric-top"><span>Growth teams</span><span className="metric-icon metric-violet"><Icon name="users" size={17} /></span></div>
+          <div className="metric-value">{crews.length}</div>
+          <div className="metric-foot"><span className="status-dot status-blue" /> {needsSetup} need a connection</div>
+        </article>
+        <article className="metric-card">
+          <div className="metric-top"><span>Data connections</span><span className="metric-icon metric-cyan"><Icon name="plug" size={17} /></span></div>
+          <div className="metric-value">{setupDone}<span className="metric-total"> / {connectors.length}</span></div>
+          <div className="metric-progress"><i style={{ width: `${progress}%` }} /></div>
+        </article>
+        <article className="metric-card metric-card-note">
+          <div className="metric-top"><span>Approval-first workflow</span><span className="metric-icon metric-green"><Icon name="shield-check" size={17} /></span></div>
+          <div className="metric-note-title">You stay in control.</div>
+          <div className="metric-foot">Nothing goes live without your approval.</div>
+        </article>
+      </section>
+
+      <section className="home-focus-grid">
+        <article className="card focus-card">
+          <div className="focus-head">
+            <div>
+              <div className="eyebrow">RECOMMENDED NEXT STEP</div>
+              <h2 className="hd focus-title">Make progress on your growth plan</h2>
+            </div>
+            <span className="focus-symbol"><Icon name="target" size={21} /></span>
+          </div>
+          <p className="focus-copy">{recommended.title}</p>
+          <div className="focus-meta">
+            <span className="chip chip-blue">{recommended.priority}</span>
+            <span className="focus-source">{recommended.source}</span>
+          </div>
+          <div className="focus-actions">
+            <button className="btn btn-primary" onClick={() => openAsk(`Prepare a draft for: ${recommended.title}`)}>Prepare this draft <Icon name="arrow-up-right" size={15} /></button>
+            <button className="btn btn-quiet" onClick={() => openAsk("Show me the other recommended actions for this workspace.")}>Explore recommendations</button>
+          </div>
+        </article>
+
+        <article className="card approval-card">
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">YOUR DECISIONS</div>
+              <h2 className="hd section-title">Approval queue</h2>
+            </div>
+            <button className="text-action" onClick={openApprovals}>View all <Icon name="arrow-up-right" size={14} /></button>
+          </div>
+          {attention.length === 0 ? (
+            <div className="approval-empty"><span className="empty-check"><Icon name="check" /></span><span>Nothing waiting for your review.</span></div>
+          ) : (
+            <div className="approval-preview">
+              {attention.slice(0, 3).map((item) => (
+                <button className="approval-preview-row" key={item.id} onClick={openApprovals}>
+                  <span className={`approval-kind-icon ${item.high ? "is-high" : ""}`}><Icon name={item.high ? "spark" : "file-text"} size={16} /></span>
+                  <span className="approval-preview-copy">
+                    <span className="approval-preview-title">{item.title}</span>
+                    <span className="approval-preview-meta">{item.kind}{item.high ? " · High impact" : ""}</span>
+                  </span>
+                  <Icon name="chevron" size={16} />
+                </button>
+              ))}
+            </div>
+          )}
+          <button className="approval-bottom-link" onClick={openApprovals}>Open approval center <Icon name="arrow-right" size={15} /></button>
+        </article>
+      </section>
+
+      <section className="home-setup card">
+        <div className="setup-main">
+          <div className="setup-icon"><Icon name="plug" size={19} /></div>
+          <div className="setup-copy">
+            <div className="eyebrow">CONNECT YOUR WORKSPACE</div>
+            <h2 className="hd setup-title">Give Spryxa the context to measure what matters.</h2>
+            <p className="setup-text">Connect your analytics, search, advertising and CRM data to unlock more useful recommendations.</p>
+            <div className="setup-progress-line">
+              <div className="metric-progress"><i style={{ width: `${progress}%` }} /></div>
+              <span>{setupDone} of {connectors.length} connected</span>
+            </div>
+          </div>
+        </div>
+        <div className="setup-connector-list">
+          {connectors.map((connector) => (
+            <Link key={connector.name} href="/settings?tab=connections" className="connector-pill">
+              <span className="connector-status" />
+              {connector.name}
+              <Icon name="plus" size={14} />
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-teams-section">
+        <div className="section-head home-section-head">
           <div>
-            <h2 id="first-t" className="hd section-title">Your first decision</h2>
-            <p className="trust"><Icon name="check" size={16} />Nothing is published, sent, or changed on your site until you approve it.</p>
+            <div className="eyebrow">YOUR AI GROWTH TEAM</div>
+            <h2 className="hd section-title">Teams working across your business</h2>
+            <p className="section-description">Specialist teams prepare work and surface decisions. You remain in control of execution.</p>
           </div>
-          <button className="btn btn-sm btn-secondary" onClick={() => toast("Set aside. You can bring it back from Handled.")}>Set aside</button>
+          <Link href="/cockpit" className="text-action">Open full cockpit <Icon name="arrow-up-right" size={14} /></Link>
         </div>
-        <ol className="steps">
-          {firstDecision.map((s) => (
-            <li key={s.label} className={`step step-${s.state}`}>
-              <span className="step-k">{s.state === "done" ? "Done" : s.state === "now" ? "Now" : "Next"}</span>
-              <span className="step-v">{s.label}</span>
-            </li>
-          ))}
-        </ol>
-
-        <div className="tabs-mini" role="tablist" aria-label="Prepared for your business">
-          <button className="tab-mini" role="tab" aria-selected={tab === "review"} onClick={() => setTab("review")}>To review <b>10</b></button>
-          <button className="tab-mini" role="tab" aria-selected={tab === "handled"} onClick={() => setTab("handled")}>Handled <b>0</b></button>
-        </div>
-
-        {tab === "handled" ? (
-          <div className="first-rec"><span className="row-meta" style={{ margin: 0 }}>No recommendations handled yet.</span></div>
-        ) : (
-          <>
-            <div className="first-rec">
-              <span className="tile" style={{ ["--t" as string]: "var(--ok)" }}><Icon name="doc" /></span>
-              <div className="row-main">
-                <div className="lbl">Recommended next · {recommended.source}</div>
-                <div className="row-title">{recommended.title}</div>
-                <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                  <span className="chip chip-warn">{recommended.priority}</span>
-                  <span className="chip">1 Ready</span><span className="chip">2 Prepare draft</span><span className="chip">3 Review draft</span>
-                </div>
-              </div>
-              <div className="actions">
-                <button className="btn btn-primary" onClick={() => openAsk(`Prepare a draft for: ${recommended.title}`)}>Prepare draft</button>
-                <button className="btn btn-quiet" onClick={() => toast("Prototype: all 10 recommendations")}>Browse all 10</button>
-              </div>
-            </div>
-            <details className="auto" open={auto} onToggle={(e) => setAuto((e.target as HTMLDetailsElement).open)}>
-              <summary>Let Spryxa prepare your first draft automatically</summary>
-              <div className="auto-body">
-                <span className="row-meta" style={{ margin: 0 }}>Uses workspace credits. You still approve the draft before anything goes live.</span>
-                <button className="btn btn-secondary" onClick={() => toast("Starter draft enabled (prototype)")}>Enable one starter draft</button>
-              </div>
-            </details>
-          </>
-        )}
-      </section>
-
-      <section className="card setup" aria-labelledby="setup-t">
-        <div className="setup-copy">
-          <h2 id="setup-t" className="hd setup-title">Connect your data to unlock insights</h2>
-          <p className="setup-text">Spryxa can only measure what moved your traffic and leads once it can see them.</p>
-          <div className="progress">
-            <div className="progress-bar"><i style={{ width: "0%" }} /></div>
-            <span className="progress-text">0 of 4 connected</span>
-          </div>
-        </div>
-        <div className="setup-actions">
-          {connectors.map((c, i) => (
-            <Link key={c.name} href="/settings?tab=connections" className={`btn ${i === 0 ? "btn-primary" : "btn-secondary"}`}>Connect {c.name}</Link>
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="needs-t">
-        <div className="section-head">
-          <h2 id="needs-t" className="hd section-title">Today · {pending} waiting</h2>
-          {pending > 0 && <button className="btn btn-sm btn-quiet" onClick={openApprovals}>See all {pending}</button>}
-        </div>
-        <div className="card rows">
-          {attention.length === 0 && <div className="empty-line"><Icon name="check" />You're all caught up.</div>}
-          {attention.map((a) => (
-            <div className="row" key={a.id}>
-              <span className="tile" style={{ ["--t" as string]: a.high ? "var(--warn-solid)" : "var(--primary)" }}>
-                <Icon name={a.high ? "spark" : "doc"} />
+        <div className="home-team-grid">
+          {crews.map((item) => (
+            <button key={item.key} className="home-team-card" onClick={() => setCrew(item)}>
+              <span className="home-team-icon" style={{ ["--team-color" as string]: item.color }}><Icon name={item.icon} size={18} /></span>
+              <span className="home-team-copy">
+                <span className="home-team-name">{item.name}</span>
+                <span className="home-team-desc">{item.desc}</span>
               </span>
-              <div className="row-main">
-                <div className="row-title">{a.title}</div>
-                <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                  <span className="chip">{a.kind === "Initiative" ? "Initiative decision" : "Agent question"}</span>
-                  {a.high && <span className="chip chip-warn">High impact</span>}
-                </div>
-              </div>
-              <button className="btn btn-secondary" onClick={openApprovals}>View</button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="areas-t">
-        <div className="section-head">
-          <h2 id="areas-t" className="hd section-title">What Spryxa handles for you</h2>
-        </div>
-        <div className="areas">
-          {crews.map((a) => (
-            <button key={a.key} className="card area" onClick={() => setCrew(a)} style={{ textAlign: "left", font: "inherit", cursor: "pointer" }}>
-              <span className="tile" style={{ ["--t" as string]: a.color }}><Icon name={a.icon} /></span>
-              <span className="area-main">
-                <span className="area-top">
-                  <span className="area-name">{a.name}</span>
-                  <span className={`chip ${a.state === "needs" ? "chip-warn" : ""}`}>{a.status}</span>
-                </span>
-                <span className="area-desc">{a.desc}</span>
-              </span>
-              <span className="go"><Icon name="chevron" /></span>
+              <span className={`team-status ${item.state === "needs" ? "team-status-needs" : ""}`}><i />{item.status}</span>
+              <Icon name="chevron" size={15} />
             </button>
           ))}
         </div>
@@ -156,16 +171,13 @@ export default function Home() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
               <span className="tile" style={{ ["--t" as string]: crew.color }}><Icon name={crew.icon} /></span>
-              <div>
-                <div className="row-title">{crew.name} crew</div>
-                <span className={`chip ${crew.state === "needs" ? "chip-warn" : ""}`}>{crew.status}</span>
-              </div>
+              <div><div className="row-title">{crew.name} team</div><span className={`chip ${crew.state === "needs" ? "chip-warn" : "chip-ok"}`}>{crew.status}</span></div>
             </div>
             <p style={{ margin: 0 }}>{crew.desc}</p>
             <div className="card" style={{ padding: 16, boxShadow: "none" }}>
-              <div className="lbl">Last run</div>
-              <div className="row-title" style={{ marginTop: 4 }}>Has not run yet</div>
-              <div className="row-meta" style={{ marginBottom: 0 }}>{crew.state === "needs" ? "Connect the missing source to start." : "Runs daily once it's turned on."}</div>
+              <div className="lbl">Current status</div>
+              <div className="row-title" style={{ marginTop: 4 }}>{crew.state === "needs" ? "Connection required" : "Ready to be configured"}</div>
+              <div className="row-meta" style={{ marginBottom: 0 }}>{crew.state === "needs" ? "Connect the required source to unlock this team's capabilities." : "Configure this team and choose what it should prepare for review."}</div>
             </div>
           </div>
         </Sheet>

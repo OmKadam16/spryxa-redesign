@@ -42,6 +42,10 @@ const paths: Record<string, string> = {
   send: "M4 12l16-8-6 16-2-6z",
   plus: "M12 5v14M5 12h14",
   panel:"M4 5h16v14H4zM9 5v14",
+  "arrow-up-right":"M7 17L17 7M7 7h10v10",
+  "arrow-right":"M5 12h14M13 6l6 6-6 6",
+  "file-text":"M7 3h8l4 4v14H7zM15 3v4h4M10 13h6M10 17h6",
+  "shield-check":"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8 12l2.5 2.5L16 9",
 };
 
 export default function Icon({ name, size = 18 }: { name: string; size?: number }) {
